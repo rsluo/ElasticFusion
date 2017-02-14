@@ -122,6 +122,7 @@ MainController::MainController(int argc, char * argv[])
     fastOdom = Parse::get().arg(argc, argv, "-fo", empty) > -1;
     rewind = Parse::get().arg(argc, argv, "-r", empty) > -1;
     frameToFrameRGB = Parse::get().arg(argc, argv, "-ftf", empty) > -1;
+    visBoundingBoxes = Parse::get().arg(argc, argv, "-vbb", empty) > -1;
 
     gui = new GUI(logFile.length() == 0, Parse::get().arg(argc, argv, "-sc", empty) > -1);
 
@@ -522,14 +523,16 @@ void MainController::run()
         // Access with int getDepthAtIndex(unsigned short * depthMap, int x, int y)
         unsigned short * depthMap = logReader->depth;
         
-        if (annotationsFileExists)
+        if (visBoundingBoxes)
         {
-            loadAnnotations(annotationsFile, pose, depthMap);
+            if (annotationsFileExists)
+            {
+                loadAnnotations(annotationsFile, pose, depthMap);
+            }
+            counter += 1;
         }
-        counter += 1;
 
         // End added section!!!!!
-
 
 
         if(eFusion->getLost())
