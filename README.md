@@ -108,6 +108,8 @@ The GUI (*ElasticFusion*) can take a bunch of parameters when launching it from 
 * *-r* : Rewind and loop log forever. 
 * *-ftf* : Do frame-to-frame RGB tracking. 
 * *-sc* : Showcase mode (minimal GUI).
+* *-ann* : Take in annotations folder (include trailing '/').
+* *-oss* : Original source sequence start number.
 
 Essentially by default *./ElasticFusion* will try run off an attached ASUS sensor live. You can provide a .klg log file instead with the -l parameter. You can capture .klg format logs using either [Logger1](https://github.com/mp3guy/Logger1) or [Logger2](https://github.com/mp3guy/Logger2). 
 

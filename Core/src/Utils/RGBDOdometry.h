@@ -59,7 +59,7 @@ class RGBDOdometry
                                           const bool & pyramid,
                                           const bool & fastOdom,
                                           const bool & so3, 
-                                          float min_x, float min_y, float max_x, float max_y);
+                                          float min_x = 0.f, float min_y = 0.f, float max_x = 0.f, float max_y = 0.f);
 
         Eigen::MatrixXd getCovariance();
 
