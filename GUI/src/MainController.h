@@ -39,6 +39,8 @@ class MainController
         void run();
 
         void loadCalibration(const std::string & filename);
+        void loadAnnotations(const std::string & filename, const Eigen::Matrix4f & pose, unsigned short * depthMap);
+        std::tuple<float, float, float, float> getBoundingBoxCoords(std::string & filename);
 
         bool good;
         ElasticFusion * eFusion;
@@ -49,6 +51,7 @@ class MainController
         bool iclnuim;
         std::string logFile;
         std::string poseFile;
+        std::string annotationsFolder;
 
         float confidence,
               depth,
@@ -61,7 +64,8 @@ class MainController
         int timeDelta,
             icpCountThresh,
             start,
-            end;
+            end,
+            origSeqStart;
 
         bool fillIn,
              openLoop,

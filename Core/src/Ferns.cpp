@@ -172,7 +172,8 @@ Eigen::Matrix4f Ferns::findFrame(std::vector<SurfaceConstraint> & constraints,
                                  GPUTexture * normalTexture,
                                  GPUTexture * imageTexture,
                                  const int time,
-                                 const bool lost)
+                                 const bool lost,
+                                 float min_x, float min_y, float max_x, float max_y)
 {
     lastClosest = -1;
 
@@ -264,7 +265,8 @@ Eigen::Matrix4f Ferns::findFrame(std::vector<SurfaceConstraint> & constraints,
                                           100,
                                           false,
                                           false,
-                                          false);
+                                          false,
+                                          min_x, min_y, max_x, max_y);
         TOCK("fernOdom");
 
         estPose.topRightCorner(3, 1) = trans;

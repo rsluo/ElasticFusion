@@ -78,7 +78,8 @@ void icpStep(const mat33& Rcurr,
              float * vectorB_host,
              float * residual_host,
              int threads,
-             int blocks);
+             int blocks, 
+             float min_x, float min_y, float max_x, float max_y);
 
 void rgbStep(const DeviceArray2D<DataTerm> & corresImg,
              const float & sigma,
@@ -123,7 +124,8 @@ void computeRgbResidual(const float & minScale,
                         int & sigmaSum,
                         int & count,
                         int threads,
-                        int blocks);
+                        int blocks,
+                        float min_x, float min_y, float max_x, float max_y);
 
 void createVMap(const CameraModel& intr,
                 const DeviceArray2D<unsigned short> & depth,

@@ -52,6 +52,7 @@
 #include "cudafuncs.cuh"
 #include "convenience.cuh"
 #include "operators.cuh"
+#include <stdio.h>
 
 #if __CUDA_ARCH__ < 300
 __inline__ __device__
@@ -256,6 +257,12 @@ __global__ void reduceSum(JtJJtrSO3 * in, JtJJtrSO3 * out, int N)
 
 struct ICPReduction
 {
+    // added vars
+    float min_x;
+    float min_y;
+    float max_x;
+    float max_y;
+
     mat33 Rcurr;
     float3 tcurr;
 
@@ -321,7 +328,15 @@ struct ICPReduction
         d = vprev_g;
         s = vcurr_g;
 
-        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x));
+
+        // Added code!
+
+        bool dynPoint = ((ukr.x < max_x) && (ukr.x > min_x) && (ukr.y < max_y) && (ukr.y > min_y));
+
+        // End added code!
+
+
+        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x) && !dynPoint);
     }
 
     __device__ __forceinline__ JtJJtrSE3
@@ -432,12 +447,19 @@ void icpStep(const mat33& Rcurr,
              float * vectorB_host,
              float * residual_host,
              int threads,
-             int blocks)
+             int blocks, 
+             float min_x, float min_y, float max_x, float max_y)
 {
     int cols = vmap_curr.cols ();
     int rows = vmap_curr.rows () / 3;
 
     ICPReduction icp;
+
+    // added vars
+    icp.min_x = min_x;
+    icp.min_y = min_y;
+    icp.max_x = max_x;
+    icp.max_y = max_y;
 
     icp.Rcurr = Rcurr;
     icp.tcurr = tcurr;
@@ -738,6 +760,12 @@ __global__ void reduceSum(int2 * in, int2 * out, int N)
 
 struct RGBResidual
 {
+    // added vars
+    float min_x;
+    float min_y;
+    float max_x;
+    float max_y;
+
     float minScale;
 
     PtrStepSz<short> dIdx;
@@ -824,7 +852,11 @@ struct RGBResidual
                                     corres.one.x = x;
                                     corres.one.y = y;
                                     corres.diff = static_cast<float>(nextImage.ptr(y)[x]) - static_cast<float>(lastImage.ptr(v0)[u0]);
-                                    corres.valid = true;
+                                    // added this condition: if the pixel is outside the hand bounding box
+                                    if (!((u0 < max_x) && (u0 > min_x) && (v0 < max_y) && (v0 > min_y)))
+                                    {
+                                        corres.valid = true;
+                                    }
                                     value.x = 1;
                                     value.y = corres.diff * corres.diff;
                                 }
@@ -881,12 +913,19 @@ void computeRgbResidual(const float & minScale,
                         int & sigmaSum,
                         int & count,
                         int threads,
-                        int blocks)
+                        int blocks,
+                        float min_x, float min_y, float max_x, float max_y)
 {
     int cols = nextImage.cols ();
     int rows = nextImage.rows ();
 
     RGBResidual rgb;
+
+    // added vars
+    rgb.min_x = min_x;
+    rgb.min_y = min_y;
+    rgb.max_x = max_x;
+    rgb.max_y = max_y;
 
     rgb.minScale = minScale;
 

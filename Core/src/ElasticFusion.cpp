@@ -258,7 +258,8 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                                  const int64_t & timestamp,
                                  const Eigen::Matrix4f * inPose,
                                  const float weightMultiplier,
-                                 const bool bootstrap)
+                                 const bool bootstrap,
+                                 float min_x, float min_y, float max_x, float max_y)
 {
     TICK("Run");
 
@@ -321,7 +322,8 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                                                       icpWeight,
                                                       pyramid,
                                                       fastOdom,
-                                                      so3);
+                                                      so3,
+                                                      min_x, min_y, max_x, max_y);
             TOCK("odom");
 
             trackingOk = !reloc || frameToModel.lastICPError < 1e-04;
@@ -421,7 +423,8 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                                            &fillIn.normalTexture,
                                            &fillIn.imageTexture,
                                            tick,
-                                           lost);
+                                           lost,
+                                           min_x, min_y, max_x, max_y);
             TOCK("Ferns::findFrame");
         }
 
@@ -431,6 +434,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
         if(closeLoops && ferns.lastClosest != -1)
         {
+            std::cout << "line434" << std::endl;
             if(lost)
             {
                 currPose = recoveryPose;
@@ -496,7 +500,8 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                                                       10,
                                                       pyramid,
                                                       fastOdom,
-                                                      false);
+                                                      false,
+                                                      min_x, min_y, max_x, max_y);
 
             Eigen::MatrixXd covar = modelToModel.getCovariance();
             bool covOk = true;
@@ -526,8 +531,11 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                     {
                         if(consBuff.at<Eigen::Vector4f>(j, i)(2) > 0 &&
                            consBuff.at<Eigen::Vector4f>(j, i)(2) < maxDepthProcessed &&
-                           timesBuff.at<unsigned short>(j, i) > 0)
+                           timesBuff.at<unsigned short>(j, i) > 0 ) //&&
+                          /* (consBuff.at<Eigen::Vector4f>(j, i)(0) > maxX || consBuff.at<Eigen::Vector4f>(j, i)(0) < minX) && 
+                           (consBuff.at<Eigen::Vector4f>(j, i)(0) > maxY || consBuff.at<Eigen::Vector4f>(j, i)(0) < minY) */
                         {
+                            std::cout << "Hello" << std::endl;
                             Eigen::Vector4f worldRawPoint = currPose * Eigen::Vector4f(consBuff.at<Eigen::Vector4f>(j, i)(0),
                                                                                        consBuff.at<Eigen::Vector4f>(j, i)(1),
                                                                                        consBuff.at<Eigen::Vector4f>(j, i)(2),
@@ -634,6 +642,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
     if(!lost)
     {
+        // std::cout << "Here!" << std::endl;
         processFerns();
         tick++;
     }

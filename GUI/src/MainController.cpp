@@ -17,6 +17,8 @@
  */
  
 #include "MainController.h"
+#include <sys/stat.h>
+#include <fstream>
 
 MainController::MainController(int argc, char * argv[])
  : good(true),
@@ -69,6 +71,15 @@ MainController::MainController(int argc, char * argv[])
 #endif
     }
 
+
+    // Added section!!!
+
+    // Added parameter for the annotations folder; include trailing '/'
+    Parse::get().arg(argc, argv, "-ann", annotationsFolder);
+
+    // End added section!!!
+
+
     if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)
     {
         groundTruthOdometry = new GroundTruthOdometry(poseFile);
@@ -87,6 +98,7 @@ MainController::MainController(int argc, char * argv[])
     start = 1;
     so3 = !(Parse::get().arg(argc, argv, "-nso", empty) > -1);
     end = std::numeric_limits<unsigned short>::max(); //Funny bound, since we predict times in this format really!
+    origSeqStart = 1;    // added parameter, original sequence start number
 
     Parse::get().arg(argc, argv, "-c", confidence);
     Parse::get().arg(argc, argv, "-d", depth);
@@ -99,6 +111,7 @@ MainController::MainController(int argc, char * argv[])
     Parse::get().arg(argc, argv, "-ic", icpCountThresh);
     Parse::get().arg(argc, argv, "-s", start);
     Parse::get().arg(argc, argv, "-e", end);
+    Parse::get().arg(argc, argv, "-oss", origSeqStart);
 
     logReader->flipColors = Parse::get().arg(argc, argv, "-f", empty) > -1;
 
@@ -174,6 +187,84 @@ void MainController::loadCalibration(const std::string & filename)
     Intrinsics::getInstance(fx, fy, cx, cy);
 }
 
+
+
+
+// Added section!!!
+
+int getDepthAtIndex(unsigned short * depthMap, int x, int y)
+{
+    return depthMap[640*y + x];
+}
+
+// Return the closest depth within the bounding box defined by (x1, y1) and (x2, y2)
+int getMinInBox(unsigned short * depthMap, int x1, int y1, int x2, int y2)
+{
+    float currentMin = 1000000;
+    for (int x = x1; x <= x2; x++)
+    {
+        for (int y = y1; y <= y2; y++)
+        {
+            float currentVal = getDepthAtIndex(depthMap, x, y);
+            if (currentVal < currentMin)
+            {
+                currentMin = currentVal;
+            }
+        }
+    }
+    return currentMin;
+}
+
+// Load the annotations file and display the bounding boxes / rectangular prisms
+void MainController::loadAnnotations(const std::string & filename, const Eigen::Matrix4f & pose, unsigned short * depthMap)
+{
+    std::ifstream file(filename);
+    std::string line;
+
+    while(std::getline(file, line))
+    {
+        char label;
+        float x1, y1, x2, y2;
+
+        int n = sscanf(line.c_str(), "%[^,], %f, %f, %f, %f", &label, &x1, &y1, &x2, &y2);
+        assert(n == 5 && "loadAnnotations: Ooops, your annotations file should contain lines with a label and four coordinate values!");
+
+        x1 = (x1 - 320)/(2*640);
+        y1 = (y1 - 240)/(2*480);
+        x2 = (x2 - 320)/(2*640);
+        y2 = (y2 - 240)/(2*480);
+
+        glColor3f(0, 1, 0);
+        //gui->drawRectangles((GLfloat)x1, (GLfloat)y1, (GLfloat)x2, (GLfloat)y2, pose);
+
+        // Draw hand rectangular prisms
+        float minDepth = getMinInBox(depthMap, x1, y1, x2, y2);
+        float maxDepth = minDepth + 0.25;
+        gui->drawRectangularPrism((GLfloat)x1, (GLfloat)y1, (GLfloat)x2, (GLfloat)y2, (GLfloat)minDepth, (GLfloat)maxDepth, pose);
+        // std::cout << "Drew cube" << std::endl;
+    }
+}
+
+std::tuple<float, float, float, float> MainController::getBoundingBoxCoords(std::string & filename)
+{
+    std::ifstream file(filename);
+    std::string line;
+    assert(!file.eof());
+
+    char label;
+    float x1, y1, x2, y2;
+
+    std::getline(file, line);
+    int n = sscanf(line.c_str(), "%[^,], %f, %f, %f, %f", &label, &x1, &y1, &x2, &y2);
+    assert(n == 5 && "getBoundingBoxCoords: Ooops, your annotations file should contain lines with a label and four coordinate values!");
+
+    return std::make_tuple(x1, y1, x2, y2);
+}
+// End added section!!!
+
+
+
+
 void MainController::launch()
 {
     while(good)
@@ -220,8 +311,18 @@ void MainController::launch()
 
 void MainController::run()
 {
+    int counter = origSeqStart;
+    float x1 = 0.f; float y1 = 0.f; float x2 = 0.f; float y2 = 0.f;
+
     while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
     {
+        std::string annotationsFile = annotationsFolder + "rgb_" + std::to_string(counter) + ".txt";
+        struct stat buffer;
+        bool annotationsFileExists = (stat (annotationsFile.c_str(), &buffer) == 0);
+
+        // std::string annotationsFile = "../../../annotations/hands/kitchen/cutting-vegetables_3752169041_greg1/rgb_" + std::to_string(counter) + ".txt";
+        // std::cout << annotationsFile << std::endl;
+
         if(!gui->pause->Get() || pangolin::Pushed(*gui->step))
         {
             if((logReader->hasMore() || rewind) && eFusion->getTick() < end)
@@ -273,7 +374,28 @@ void MainController::run()
                     *currentPose = groundTruthOdometry->getTransformation(logReader->timestamp);
                 }
 
-                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
+                // Added section
+
+                // float x1 = 0.f; float y1 = 0.f; float x2 = 0.f; float y2 = 0.f;
+                if (annotationsFileExists) 
+                {
+                    std::tuple<float, float, float, float> tuple_values = getBoundingBoxCoords(annotationsFile);
+                    x1 = std::get<0>(tuple_values);
+                    y1 = std::get<1>(tuple_values);
+                    x2 = std::get<2>(tuple_values);
+                    y2 = std::get<3>(tuple_values);
+                }
+
+                /*
+                std::cout << "x1: " << x1 << std::endl;
+                std::cout << "y1: " << y1 << std::endl;
+                std::cout << "x2: " << x2 << std::endl;
+                std::cout << "y2: " << y2 << std::endl; */
+
+                // added const bool bootstrap = false
+                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier, false, x1, y1, x2, y2);
+
+                // End modified section
 
                 if(currentPose)
                 {
@@ -389,9 +511,26 @@ void MainController::run()
                                                            eFusion->getTick(),
                                                            eFusion->getTimeDelta());
             }
+            // std::cout << "Drew global model" << std::endl;
             glFinish();
             TOCK("Global");
         }
+
+
+        // Added section!!!
+
+        // Access with int getDepthAtIndex(unsigned short * depthMap, int x, int y)
+        unsigned short * depthMap = logReader->depth;
+        
+        if (annotationsFileExists)
+        {
+            loadAnnotations(annotationsFile, pose, depthMap);
+        }
+        counter += 1;
+
+        // End added section!!!!!
+
+
 
         if(eFusion->getLost())
         {

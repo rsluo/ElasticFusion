@@ -73,7 +73,8 @@ class ElasticFusion
                           const int64_t & timestamp,
                           const Eigen::Matrix4f * inPose = 0,
                           const float weightMultiplier = 1.f,
-                          const bool bootstrap = false);
+                          const bool bootstrap = false,
+                          float min_x = 0.f, float min_y = 0.f, float max_x = 0.f, float max_y = 0.f);
 
         /**
          * Predicts the current view of the scene, updates the [vertex/normal/image]Tex() members

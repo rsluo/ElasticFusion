@@ -270,7 +270,8 @@ void RGBDOdometry::getIncrementalTransformation(Eigen::Vector3f & trans,
                                                 const float & icpWeight,
                                                 const bool & pyramid,
                                                 const bool & fastOdom,
-                                                const bool & so3)
+                                                const bool & so3, 
+                                                float min_x, float min_y, float max_x, float max_y)
 {
     bool icp = !rgbOnly && icpWeight > 0;
     bool rgb = rgbOnly || icpWeight < 100;
@@ -454,7 +455,8 @@ void RGBDOdometry::getIncrementalTransformation(Eigen::Vector3f & trans,
                                    sigma,
                                    rgbSize,
                                    GPUConfig::getInstance().rgbResThreads,
-                                   GPUConfig::getInstance().rgbResBlocks);
+                                   GPUConfig::getInstance().rgbResBlocks,
+                                   min_x, min_y, max_x, max_y);
                 TOCK("computeRgbResidual");
             }
 
@@ -507,7 +509,8 @@ void RGBDOdometry::getIncrementalTransformation(Eigen::Vector3f & trans,
                         b_icp.data(),
                         &residual[0],
                         GPUConfig::getInstance().icpStepThreads,
-                        GPUConfig::getInstance().icpStepBlocks);
+                        GPUConfig::getInstance().icpStepBlocks, 
+                        min_x, min_y, max_x, max_y);
                 TOCK("icpStep");
             }
 

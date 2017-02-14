@@ -231,6 +231,69 @@ class GUI
             pangolin::Display("cam").Activate(s_cam);
         }
 
+
+
+        // Added section!!!
+
+        inline void drawRectangles(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, const Eigen::Matrix4f & pose)
+        {
+            if(showcaseMode)
+                return;
+
+            pangolin::glSetFrameOfReference(pose);
+
+            /*
+            x1 = (x1 - 320)/(2*640);
+            y1 = (y1 - 240)/(2*480);
+            x2 = (x2 - 320)/(2*640);
+            y2 = (y2 - 240)/(2*480);
+            */
+            pangolin::glDrawRectPerimeter(x1, y1, x2, y2);
+            // std::cout << "x1: " << x1 << " x2: " << x2 << " y1: " << y1 << " y2: " << y2 << std::endl;
+            pangolin::glUnsetFrameOfReference();
+        }
+
+        inline void drawRectangularPrism(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat minDepth, GLfloat maxDepth, const Eigen::Matrix4f & pose)
+        {
+            if (showcaseMode)
+                return;
+
+            pangolin::glSetFrameOfReference(pose);
+            
+            const GLfloat verts[] = {
+                x1,y1,minDepth,    x2,y1,minDepth,    x2,y2,minDepth,    x1,y2,minDepth,    // front
+                x1,y1,maxDepth,    x2,y1,maxDepth,    x2,y2,maxDepth,    x1,y2,maxDepth,    // back
+                x1,y1,minDepth,    x1,y1,maxDepth,    x1,y2,maxDepth,    x1,y2,minDepth,    // left
+                x2,y1,minDepth,    x2,y1,maxDepth,    x2,y2,maxDepth,    x2,y2,minDepth,    // right
+                x1,y1,minDepth,    x2,y1,minDepth,    x2,y1,maxDepth,    x1,y1,maxDepth,    // top
+                x1,y2,minDepth,    x2,y2,minDepth,    x2,y2,maxDepth,    x1,y2,maxDepth     // bottom
+            };
+
+            glVertexPointer(3, GL_FLOAT, 0, verts);
+            glEnableClientState(GL_VERTEX_ARRAY);
+            
+            // glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+            glDrawArrays(GL_LINE_LOOP, 0, 4);
+            glDrawArrays(GL_LINE_LOOP, 4, 4);
+            
+            // glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+            glDrawArrays(GL_LINE_LOOP, 8, 4);
+            glDrawArrays(GL_LINE_LOOP, 12, 4);
+            
+            // glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
+            glDrawArrays(GL_LINE_LOOP, 16, 4);
+            glDrawArrays(GL_LINE_LOOP, 20, 4);
+            
+            glDisableClientState(GL_VERTEX_ARRAY);
+
+            pangolin::glUnsetFrameOfReference();
+        }
+
+        // End added section!!!
+
+
+
+
         inline void drawFrustum(const Eigen::Matrix4f & pose)
         {
             if(showcaseMode)

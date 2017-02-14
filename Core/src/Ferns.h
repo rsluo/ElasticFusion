@@ -57,7 +57,8 @@ class Ferns
                                   GPUTexture * normalTexture,
                                   GPUTexture * imageTexture,
                                   const int time,
-                                  const bool lost);
+                                  const bool lost,
+                                  float min_x, float min_y, float max_x, float max_y);
 
         class Fern
         {

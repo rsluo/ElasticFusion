@@ -58,7 +58,8 @@ class RGBDOdometry
                                           const float & icpWeight,
                                           const bool & pyramid,
                                           const bool & fastOdom,
-                                          const bool & so3);
+                                          const bool & so3, 
+                                          float min_x, float min_y, float max_x, float max_y);
 
         Eigen::MatrixXd getCovariance();
 
