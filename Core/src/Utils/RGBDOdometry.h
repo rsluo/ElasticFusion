@@ -44,7 +44,8 @@ class RGBDOdometry
 
         void initICP(GPUTexture * predictedVertices, GPUTexture * predictedNormals, const float depthCutoff);
 
-        void initICPModel(GPUTexture * predictedVertices, GPUTexture * predictedNormals, const float depthCutoff, const Eigen::Matrix4f & modelPose);
+        void initICPModel(GPUTexture * predictedVertices, GPUTexture * predictedNormals, const float depthCutoff, const Eigen::Matrix4f & modelPose, 
+                          float min_x = 0.f, float min_y = 0.f, float max_x = 0.f, float max_y = 0.f);
 
         void initRGB(GPUTexture * rgb);
 

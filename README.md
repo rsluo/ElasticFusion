@@ -110,7 +110,7 @@ The GUI (*ElasticFusion*) can take a bunch of parameters when launching it from 
 * *-sc* : Showcase mode (minimal GUI).
 * *-ann* : Take in annotations folder (include trailing '/').
 * *-oss* : Original source sequence start number.
-* *-vbb* : Include the bounding box visualizations on the global model.
+* *-vbb* : Visualize the bounding boxes on the global model.
 
 Essentially by default *./ElasticFusion* will try run off an attached ASUS sensor live. You can provide a .klg log file instead with the -l parameter. You can capture .klg format logs using either [Logger1](https://github.com/mp3guy/Logger1) or [Logger2](https://github.com/mp3guy/Logger2). 
 

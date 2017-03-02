@@ -52,6 +52,7 @@
 #include "cudafuncs.cuh"
 #include "convenience.cuh"
 #include "operators.cuh"
+#include <stdio.h>
 
 
 __global__ void pyrDownGaussKernel (const PtrStepSz<unsigned short> src, PtrStepSz<unsigned short> dst, float sigma_color)
@@ -204,13 +205,17 @@ void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap)
 }
 
 __global__ void tranformMapsKernel(int rows, int cols, const PtrStep<float> vmap_src, const PtrStep<float> nmap_src,
-                                   const mat33 Rmat, const float3 tvec, PtrStepSz<float> vmap_dst, PtrStep<float> nmap_dst)
+                                   const mat33 Rmat, const float3 tvec, PtrStepSz<float> vmap_dst, PtrStep<float> nmap_dst,
+                                   float fx, float fy, float cx, float cy,
+                                   float min_x, float min_y, float max_x, float max_y)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
 
     if (x < cols && y < rows)
     {
+        bool inBoundingBox = false;
+
         //vertexes
         float3 vsrc, vdst = make_float3 (__int_as_float(0x7fffffff), __int_as_float(0x7fffffff), __int_as_float(0x7fffffff));
         vsrc.x = vmap_src.ptr (y)[x];
@@ -220,37 +225,50 @@ __global__ void tranformMapsKernel(int rows, int cols, const PtrStep<float> vmap
             vsrc.y = vmap_src.ptr (y + rows)[x];
             vsrc.z = vmap_src.ptr (y + 2 * rows)[x];
 
-            vdst = Rmat * vsrc + tvec;
+            float proj_x = vsrc.x * fx / vsrc.z + cx;
+            float proj_y = vsrc.y * fy / vsrc.z + cy;
+            inBoundingBox = ((proj_x < max_x) && (proj_x > min_x) && (proj_y < max_y) && (proj_y > min_y));
 
-            vmap_dst.ptr (y + rows)[x] = vdst.y;
-            vmap_dst.ptr (y + 2 * rows)[x] = vdst.z;
+            if (!inBoundingBox)
+            {
+                vdst = Rmat * vsrc + tvec;
+
+                vmap_dst.ptr (y + rows)[x] = vdst.y;
+                vmap_dst.ptr (y + 2 * rows)[x] = vdst.z;            
+            }
         }
 
-        vmap_dst.ptr (y)[x] = vdst.x;
-
-        //normals
-        float3 nsrc, ndst = make_float3 (__int_as_float(0x7fffffff), __int_as_float(0x7fffffff), __int_as_float(0x7fffffff));
-        nsrc.x = nmap_src.ptr (y)[x];
-
-        if (!isnan (nsrc.x))
+        if (!inBoundingBox)
         {
-            nsrc.y = nmap_src.ptr (y + rows)[x];
-            nsrc.z = nmap_src.ptr (y + 2 * rows)[x];
+            vmap_dst.ptr (y)[x] = vdst.x;        
+                   
+            //normals
+            float3 nsrc, ndst = make_float3 (__int_as_float(0x7fffffff), __int_as_float(0x7fffffff), __int_as_float(0x7fffffff));
+            nsrc.x = nmap_src.ptr (y)[x];
 
-            ndst = Rmat * nsrc;
+            if (!isnan (nsrc.x))
+            {
+                nsrc.y = nmap_src.ptr (y + rows)[x];
+                nsrc.z = nmap_src.ptr (y + 2 * rows)[x];
 
-            nmap_dst.ptr (y + rows)[x] = ndst.y;
-            nmap_dst.ptr (y + 2 * rows)[x] = ndst.z;
+                ndst = Rmat * nsrc;
+
+                nmap_dst.ptr (y + rows)[x] = ndst.y;
+                nmap_dst.ptr (y + 2 * rows)[x] = ndst.z;
+            }
+
+            nmap_dst.ptr (y)[x] = ndst.x;
+
         }
-
-        nmap_dst.ptr (y)[x] = ndst.x;
     }
 }
 
 void tranformMaps(const DeviceArray2D<float>& vmap_src,
                   const DeviceArray2D<float>& nmap_src,
                   const mat33& Rmat, const float3& tvec,
-                  DeviceArray2D<float>& vmap_dst, DeviceArray2D<float>& nmap_dst)
+                  DeviceArray2D<float>& vmap_dst, DeviceArray2D<float>& nmap_dst,
+                  const CameraModel& intr,
+                  float min_x, float min_y, float max_x, float max_y)
 {
     int cols = vmap_src.cols();
     int rows = vmap_src.rows() / 3;
@@ -263,7 +281,10 @@ void tranformMaps(const DeviceArray2D<float>& vmap_src,
     grid.x = getGridDim(cols, block.x);
     grid.y = getGridDim(rows, block.y);
 
-    tranformMapsKernel<<<grid, block>>>(rows, cols, vmap_src, nmap_src, Rmat, tvec, vmap_dst, nmap_dst);
+    float fx = intr.fx, cx = intr.cx;
+    float fy = intr.fy, cy = intr.cy;
+
+    tranformMapsKernel<<<grid, block>>>(rows, cols, vmap_src, nmap_src, Rmat, tvec, vmap_dst, nmap_dst, fx, fy, cx, cy, min_x, min_y, max_x, max_y);
     cudaSafeCall(cudaGetLastError());
 }
 

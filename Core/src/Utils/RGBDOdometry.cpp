@@ -169,7 +169,8 @@ void RGBDOdometry::initICP(GPUTexture * predictedVertices, GPUTexture * predicte
 void RGBDOdometry::initICPModel(GPUTexture * predictedVertices,
                                 GPUTexture * predictedNormals,
                                 const float depthCutoff,
-                                const Eigen::Matrix4f & modelPose)
+                                const Eigen::Matrix4f & modelPose,
+                                float min_x, float min_y, float max_x, float max_y)
 {
     cudaArray * textPtr;
 
@@ -199,7 +200,7 @@ void RGBDOdometry::initICPModel(GPUTexture * predictedVertices,
 
     for(int i = 0; i < NUM_PYRS; ++i)
     {
-        tranformMaps(vmaps_g_prev_[i], nmaps_g_prev_[i], device_Rcam, device_tcam, vmaps_g_prev_[i], nmaps_g_prev_[i]);
+        tranformMaps(vmaps_g_prev_[i], nmaps_g_prev_[i], device_Rcam, device_tcam, vmaps_g_prev_[i], nmaps_g_prev_[i], intr(i), min_x, min_y, max_x, max_y);
     }
 
     cudaDeviceSynchronize();

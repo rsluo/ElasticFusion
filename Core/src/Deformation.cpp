@@ -217,7 +217,7 @@ bool Deformation::constrain(std::vector<Ferns::Frame*> & ferns,
     return false;
 }
 
-void Deformation::sampleGraphFrom(Deformation & other)
+void Deformation::sampleGraphFrom(Deformation & other, float min_x, float min_y, float max_x, float max_y)
 {
     Eigen::Vector4f * otherVerts = other.getVertices();
 
@@ -229,14 +229,22 @@ void Deformation::sampleGraphFrom(Deformation & other)
         {
             Eigen::Vector3f newPoint = otherVerts[i].head<3>();
 
-            graphPosePoints->push_back(newPoint);
+            // Project newPoint to 2D pixel coordinates
+            float proj_x = newPoint(0) * Intrinsics::getInstance().fx() / newPoint(2) + Intrinsics::getInstance().cx();
+            float proj_y = newPoint(1) * Intrinsics::getInstance().fy() / newPoint(2) + Intrinsics::getInstance().cy();
 
-            if(i > 0 && otherVerts[i](3) < graphPoseTimes.back())
+            // Check to make sure projection is not in hand bounding box
+            if (!((proj_x < max_x) && (proj_x > min_x) && (proj_y < max_y) && (proj_y > min_y)))
             {
-                assert(false && "Assumption failed");
-            }
+                graphPosePoints->push_back(newPoint);
 
-            graphPoseTimes.push_back(otherVerts[i](3));
+                if(i > 0 && otherVerts[i](3) < graphPoseTimes.back())
+                {
+                    assert(false && "Assumption failed");
+                }
+
+                graphPoseTimes.push_back(otherVerts[i](3)); 
+            }
         }
 
         def.initialiseGraph(graphPosePoints, &graphPoseTimes);

@@ -140,7 +140,9 @@ void tranformMaps(const DeviceArray2D<float>& vmap_src,
                   const mat33& Rmat,
                   const float3& tvec,
                   DeviceArray2D<float>& vmap_dst,
-                  DeviceArray2D<float>& nmap_dst);
+                  DeviceArray2D<float>& nmap_dst,
+                  const CameraModel& intr,
+                  float min_x, float min_y, float max_x, float max_y);
 
 void copyMaps(const DeviceArray<float>& vmap_src,
               const DeviceArray<float>& nmap_src,

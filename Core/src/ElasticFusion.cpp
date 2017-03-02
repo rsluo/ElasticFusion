@@ -299,7 +299,8 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             //WARNING initICP* must be called before initRGB*
             frameToModel.initICPModel(shouldFillIn ? &fillIn.vertexTexture : indexMap.vertexTex(),
                                       shouldFillIn ? &fillIn.normalTexture : indexMap.normalTex(),
-                                      maxDepthProcessed, currPose);
+                                      maxDepthProcessed, currPose,
+                                      min_x, min_y, max_x, max_y);
             frameToModel.initRGBModel((shouldFillIn || frameToFrameRGB) ? &fillIn.imageTexture : indexMap.imageTex());
 
             frameToModel.initICP(textures[GPUTexture::DEPTH_FILTERED], maxDepthProcessed);
@@ -434,7 +435,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
         if(closeLoops && ferns.lastClosest != -1)
         {
-            std::cout << "line434" << std::endl;
+            std::cout << "processFrame line 434" << std::endl;
             if(lost)
             {
                 currPose = recoveryPose;
@@ -485,7 +486,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             TOCK("IndexMap::INACTIVE");
 
             //WARNING initICP* must be called before initRGB*
-            modelToModel.initICPModel(indexMap.oldVertexTex(), indexMap.oldNormalTex(), maxDepthProcessed, currPose);
+            modelToModel.initICPModel(indexMap.oldVertexTex(), indexMap.oldNormalTex(), maxDepthProcessed, currPose, min_x, min_y, max_x, max_y);
             modelToModel.initRGBModel(indexMap.oldImageTex());
 
             modelToModel.initICP(indexMap.vertexTex(), indexMap.normalTex(), maxDepthProcessed);
@@ -535,7 +536,6 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                           /* (consBuff.at<Eigen::Vector4f>(j, i)(0) > maxX || consBuff.at<Eigen::Vector4f>(j, i)(0) < minX) && 
                            (consBuff.at<Eigen::Vector4f>(j, i)(0) > maxY || consBuff.at<Eigen::Vector4f>(j, i)(0) < minY) */
                         {
-                            std::cout << "Hello" << std::endl;
                             Eigen::Vector4f worldRawPoint = currPose * Eigen::Vector4f(consBuff.at<Eigen::Vector4f>(j, i)(0),
                                                                                        consBuff.at<Eigen::Vector4f>(j, i)(1),
                                                                                        consBuff.at<Eigen::Vector4f>(j, i)(2),
@@ -634,7 +634,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
     localDeformation.sampleGraphModel(globalModel.model());
 
-    globalDeformation.sampleGraphFrom(localDeformation);
+    globalDeformation.sampleGraphFrom(localDeformation, min_x, min_y, max_x, max_y);
 
     TOCK("sampleGraph");
 

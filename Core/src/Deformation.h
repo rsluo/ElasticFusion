@@ -43,7 +43,7 @@ class Deformation
 
         void sampleGraphModel(const std::pair<GLuint, GLuint> & model);
 
-        void sampleGraphFrom(Deformation & other);
+        void sampleGraphFrom(Deformation & other, float min_x, float min_y, float max_x, float max_y);
 
         class Constraint
         {
